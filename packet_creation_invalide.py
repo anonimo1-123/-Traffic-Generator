@@ -15,8 +15,7 @@ def create_packet(stack_protocol:scapy,parameters:dict)->scapy:
                     setattr(save_stack_protocol[stack_protocol.name],key,parameters[stack_protocol.name][key])
                 else:
                     print(f"\n{"#"*5}There were problems with the attribute [{key}] check if it is written correctly{"#"*5}\n")
-                    dict_new = create_dic()
-                    create_packet(stack_protocol,dict_new)
+                    
                     
             stack_protocol = stack_protocol.payload
             list_attributes = []
@@ -30,31 +29,7 @@ def create_packet(stack_protocol:scapy,parameters:dict)->scapy:
 
         
     
-    
-def create_dic()->dict:
-    counter_layer = int(input("How many layers will the protocol stack have? -> "))
-    counter = 0
 
-    dict = {}
-    while  counter< counter_layer:
-        print("********************************************************************************+")
-        name_layer = input("enter the layer name -> ").upper()
-        number_parameters = int(input("enter the  parameters number ->"))
-        dict[name_layer]= {}
-        
-        while number_parameters > 0:
-            print("*************************************************")
-            name_parameter = input("enter the parameter name -> ")
-            value_parameter = input("enter the parameter value -> ")
-            type_of_value_the_attribute = input("What is the data TYPE of the entered value? -> ")
-            if type_of_value_the_attribute == "int":
-                value_parameter = int(value_parameter)
-            dict[name_layer][name_parameter] = value_parameter
-            number_parameters -= 1
-        counter += 1
-    
-    return dict
-        
         
 def stack_size_check_protocol(packet,parameters_modify:dict)->bool:
     if len(packet.layers()) == len(parameters_modify):
@@ -80,7 +55,7 @@ def attributes_valid(attribute:str,packet):
 @dataclass
 class Packet_new:
     stack_packet:Packet
-    attributes_layers:dict = field(default_factory=create_dic)
+    attributes_layers:dict 
     __configured_packet:Packet|None= field(default=None)
     
     
@@ -90,7 +65,7 @@ class Packet_new:
         
 
     @configured_packet.setter
-    def configured_packet(self,valor):
+    def configured_packet(self,valor):  
         self.__configured_packet = valor
         return self.__configured_packet
     
@@ -100,20 +75,16 @@ class Packet_new:
         
         
     
-    
-  
-    
-    
-    
-    
-    
-
-stack_protocols = IP()
-
-packet_new = Packet_new(stack_protocols).create_()
+#uso de la clase Packet_new
+"""stack_protocols = IP()
+attributes_configure = {
+    "IP":
+        {
+            "dst":"192.168.0.5"
+        }
+}
+packet_new = Packet_new(stack_protocols,attributes_configure).create_()
 
 packet_new.show()
 
-
-#packet_set = create_packet(packet, create_dic())
-
+"""
