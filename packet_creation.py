@@ -3,23 +3,13 @@ import sys
 from dataclasses import dataclass, field
 
 
-
-def get_keys_dict(parameters:dict)->list:
-    list_keys=[]
-    for i in parameters:
-        list_keys.append(str(i))
-        
-    return list_keys
-        
-
 def create_packet(stack_protocol:scapy,parameters:dict)->scapy:
     if(stack_size_check_protocol(stack_protocol,parameters)):
         save_stack_protocol = stack_protocol
         while True:
             list_attributes = parameters[stack_protocol.name]
-            list_attributes = get_keys_dict(list_attributes)
-            
-            
+       
+
             for key in list_attributes:
                 if attributes_valid(key,stack_protocol):
                     setattr(save_stack_protocol[stack_protocol.name],key,parameters[stack_protocol.name][key])
