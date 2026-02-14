@@ -1,23 +1,23 @@
 from scapy.all import *
-from package_creation import *
-target = "45.33.32.156"
+target = "127.0.0.53"#"45.33.32.156"
 port = 4800
 get_raw = bytearray(
-    "GET / HTTP/1.1\r\nHost: scanme.nmap.org\r\n\r\n ", encoding="utf-8"
+    "GET / HTTP/1.1\r\nHost: 127.0.0.53\r\n\r\n ", encoding="utf-8" #scanme.nmap.org
 )
 
 """
     The function `filter_http_ok` checks if a packet contains an HTTP response with status code 200 OK.
 """
 
+
+
+
+
+
 def filter_http_ok(packet:scapy)->bool:
     if packet.haslayer(Raw):
         if b"HTTP/1.1 200 OK" in packet[Raw].load :
             return True
-    
-
-def create_packet(tuple_protocols_packet:tuple):
-    pass
     
 
 
@@ -47,9 +47,25 @@ try:
         / get_raw
     )
     send(request_get)
+
     while True:
-        print("********************************************")
-        packet = sniff(filter="tcp port 80",lfilter=filter_http_ok ,iface="wlp3s0", count=1)
-        
+        packet = sniff(filter="port 80",iface="wlp0s20f3",count=1)
+        if filter_http_ok(packet[0]):
+            break
+    
+    
+    send( IP(dst=target) / TCP(
+            sport=port, flags="A", seq=(packet[0].seq +1) ))
+
+    """    answer_fin = sr1(IP(dst=target) / TCP(
+            sport=port, flags="F", seq=packet[0].ack, ack=packet[0].seq+1
+        ))
+    
+    send( IP(dst=target) / TCP(
+            sport=port, flags="A", seq=answer_fin.ack, ack=answer_fin.seq+1
+        ))
+        """
+    
 except KeyboardInterrupt:
     print("termino el programa")
+
