@@ -1,71 +1,59 @@
-from scapy.all import *
-target = "127.0.0.53"#"45.33.32.156"
-port = 4800
-get_raw = bytearray(
-    "GET / HTTP/1.1\r\nHost: 127.0.0.53\r\n\r\n ", encoding="utf-8" #scanme.nmap.org
-)
 
-"""
-    The function `filter_http_ok` checks if a packet contains an HTTP response with status code 200 OK.
-"""
+import random
+from scapy.all import IP, TCP, ICMP, Ether, ARP, sr1, send
 
 
-
-
-
-
-def filter_http_ok(packet:scapy)->bool:
-    if packet.haslayer(Raw):
-        if b"HTTP/1.1 200 OK" in packet[Raw].load :
-            return True
-    
-
-
-
-
-try:
-    IP_packet = IP(dst=target) / TCP(
-        sport=port, flags="S", window=65495, options=[("MSS", 1460)]
-    )
-    answer = sr1(IP_packet)
-
-    values = {
-        "flag": answer.payload.flags,
-        "seq": answer.payload.ack,
-        "ack": answer.payload.seq + 1,
+def create_packets(ip_dst: str, source_port: int) -> dict:
+    #Creacion del diccionario de pilas de protocolos
+    return {
+        "tcp_syn": IP(dst=ip_dst) / TCP(
+            sport=source_port,
+            dport=80,
+            flags="S",
+            seq=1000,
+            ack=0,
+            options=[('MSS', 1460), ('WScale', 7), ('SAckOK', b'')]
+        ),
+        "tcp_ack": IP(dst=ip_dst) / TCP(
+            sport=source_port,
+            dport=80,
+            flags="A",
+            seq=0,
+            ack=0
+        ),
+        "icmp": IP(dst=ip_dst) / ICMP(),
+        "arp": Ether() / ARP(pdst=ip_dst)
     }
 
-    if values["flag"] == "SA":
-        confirmation_syn = IP(dst=target) / TCP(
-            sport=port, flags="A", seq=values["seq"], ack=values["ack"]
-        )
-    send(confirmation_syn)
 
-    request_get = (
-        IP(dst=target)
-        / TCP(sport=port, dport=80, flags="A", seq=values["seq"], ack=values["ack"])
-        / get_raw
-    )
-    send(request_get)
+def perform_tcp_handshake(ip_dst: str) -> None:
+    """Realiza TCP handshake de 3 vías.
+    
+    """
+    port_source_random = random.randint(49152, 65535)
+    packet_list = create_packets(ip_dst, port_source_random)
+    
+    # Enviar SYN y esperar SYN-ACK
+    answer = sr1(packet_list["tcp_syn"], timeout=2, verbose=False)
+    
+    if answer is None:
+        print("Error: No se recibió respuesta")
+        return
+    
+    if not hasattr(answer, 'ack'):
+        print("Error: Respuesta no contiene ACK")
+        return
+    
+    # Verificar secuencia correcta
+    if answer.ack == (packet_list["tcp_syn"]["TCP"].seq + 1):
+        packet_list["tcp_ack"]["TCP"].seq = answer.ack
+        packet_list["tcp_ack"]["TCP"].ack = answer.seq + 1
+        send(packet_list["tcp_ack"], verbose=False)
+        print("Handshake completado exitosamente")
+    else:
+        print("Error: Secuencia ACK incorrecta")
 
-    while True:
-        packet = sniff(filter="port 80",iface="wlp0s20f3",count=1)
-        if filter_http_ok(packet[0]):
-            break
-    
-    
-    send( IP(dst=target) / TCP(
-            sport=port, flags="A", seq=(packet[0].seq +1) ))
 
-    """    answer_fin = sr1(IP(dst=target) / TCP(
-            sport=port, flags="F", seq=packet[0].ack, ack=packet[0].seq+1
-        ))
-    
-    send( IP(dst=target) / TCP(
-            sport=port, flags="A", seq=answer_fin.ack, ack=answer_fin.seq+1
-        ))
-        """
-    
-except KeyboardInterrupt:
-    print("termino el programa")
-
+if __name__ == "__main__":
+    IP_DESTINATION = "10.234.173.71"
+    perform_tcp_handshake(IP_DESTINATION)
