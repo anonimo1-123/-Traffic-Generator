@@ -22,7 +22,18 @@ def create_packets(ip_dst: str, source_port: int) -> dict:
             ack=0
         ),
         "icmp": IP(dst=ip_dst) / ICMP(),
-        "arp": Ether() / ARP(pdst=ip_dst)
+        "arp": Ether() / ARP(pdst=ip_dst),
+        "get_http_request": IP(dst=ip_dst)/TCP()/(
+            "GET / HTTP/1.1\r\n"
+            f"Host: {host}\r\n"
+            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
+            "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8\r\n"
+            "Accept-Language: es-ES,es;q=0.9,en;q=0.8\r\n"
+            "Accept-Encoding: gzip, deflate, br\r\n"
+            "Connection: keep-alive\r\n"
+            "Upgrade-Insecure-Requests: 1\r\n"
+            "Cache-Control: max-age=0\r\n"
+            "\r\n" )        
     }
 
 
@@ -50,8 +61,15 @@ def perform_tcp_handshake(ip_dst: str) -> None:
         packet_list["tcp_ack"]["TCP"].ack = answer.seq + 1
         send(packet_list["tcp_ack"], verbose=False)
         print("Handshake completado exitosamente")
+        perform_flow_http()
+    
     else:
         print("Error: Secuencia ACK incorrecta")
+        
+        
+def perform_flow_http()->bool:
+    pass
+    
 
 
 if __name__ == "__main__":
