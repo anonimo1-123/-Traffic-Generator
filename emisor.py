@@ -1,6 +1,29 @@
 
 import random
-from scapy.all import IP, TCP, ICMP, Ether, ARP, sr1, send
+from scapy.all import IP, TCP, ICMP, Ether, ARP, sr1, send, Raw
+
+#formato http request en crlf
+#           "GET / HTTP/1.1\r\n"
+#            f"Host: {host}\r\n"
+#            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
+#            "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8\r\n"
+#            "Accept-Language: es-ES,es;q=0.9,en;q=0.8\r\n"
+#            "Accept-Encoding: gzip, deflate, br\r\n"
+#            "Connection: keep-alive\r\n"
+#            "Upgrade-Insecure-Requests: 1\r\n"
+#            "Cache-Control: max-age=0\r\n"
+#           "\r\n" 
+def structure_get_http(header_modify:str)-> str:
+        if header_modify: 
+            return (
+                "GET / HTTP/1.1\r\n"
+                f"{header_modify}"
+                "\r\n"
+            )
+        else :
+            return ""
+
+
 
 
 def create_packets(ip_dst: str, source_port: int) -> dict:
@@ -23,17 +46,10 @@ def create_packets(ip_dst: str, source_port: int) -> dict:
         ),
         "icmp": IP(dst=ip_dst) / ICMP(),
         "arp": Ether() / ARP(pdst=ip_dst),
-        "get_http_request": IP(dst=ip_dst)/TCP()/(
-            "GET / HTTP/1.1\r\n"
-            f"Host: {host}\r\n"
-            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
-            "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8\r\n"
-            "Accept-Language: es-ES,es;q=0.9,en;q=0.8\r\n"
-            "Accept-Encoding: gzip, deflate, br\r\n"
-            "Connection: keep-alive\r\n"
-            "Upgrade-Insecure-Requests: 1\r\n"
-            "Cache-Control: max-age=0\r\n"
-            "\r\n" )        
+        "get_http_request": IP(dst=ip_dst)/TCP(
+            sport=source_port,
+            dport=80,
+            flags="PA",)
     }
 
 
@@ -61,17 +77,33 @@ def perform_tcp_handshake(ip_dst: str) -> None:
         packet_list["tcp_ack"]["TCP"].ack = answer.seq + 1
         send(packet_list["tcp_ack"], verbose=False)
         print("Handshake completado exitosamente")
-        perform_flow_http()
+        
+        #flujo http
+        http_get =packet_list["get_http_request"]
+        http_get.seq = answer.ack
+        http_get.ack = answer.seq + 1
+        perform_flow_http(http_get)
     
     else:
         print("Error: Secuencia ACK incorrecta")
         
         
-def perform_flow_http()->bool:
-    pass
+def perform_flow_http(http_get)->bool:
+    fields_to_modify = (
+        "Host:httpforever.com\r\n"
+        )
+    http_header = structure_get_http(fields_to_modify)
+    if http_header:
+        send(http_get/http_header)
+        print("transmision exitosa")
+    else :
+        print("variable header_modify vacia")
+                                                                                        
+    
+    
     
 
 
 if __name__ == "__main__":
-    IP_DESTINATION = "10.234.173.71"
+    IP_DESTINATION ="146.190.62.39"
     perform_tcp_handshake(IP_DESTINATION)
